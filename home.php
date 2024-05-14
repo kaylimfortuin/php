@@ -27,6 +27,7 @@ if (isset($_POST['logout'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@4.0/dist/fancybox.css">
     <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
     <link rel="stylesheet" href="./assets/css/style.css">
+    <title>CTU-Buddy</title>
     
 
     <style>
@@ -43,7 +44,6 @@ if (isset($_POST['logout'])) {
                 overflow: auto;
             }
         }
-
         #contact::before {
         content: "";
         width: 100%;
@@ -68,7 +68,7 @@ if (isset($_POST['logout'])) {
             justify-content: space-between;
         }
         .iframe-container {
-            width: 600px;
+            width: 100%;
             background-color: white;
             height: 430px;
             overflow: hidden;
@@ -78,8 +78,20 @@ if (isset($_POST['logout'])) {
             width: 100%;
             height: 430px;
         }
+        .kay:hover{
+            background-color: transparent;
+        }
+        .iframe-container iframe {
+            transition: filter 0.3s ease;
+        }
+
+        .iframe-container iframe:hover {
+            filter: grayscale(0%);
+        }
+        .iframe-container{
+            margin-top: 20px;
+        }
 </style>
-    </style>
 </head>
 
 <body data-bs-spy="scroll" data-bs-target=".navbar">
@@ -302,45 +314,46 @@ if (isset($_POST['logout'])) {
             </div>
             <div class="row justify-content-center" data-aos="fade-down" data-aos-delay="250">
                 <div class="col-lg-8">
-                    <form class="row g-3 p-lg-5 p-4 bg-white theme-shadow" id="chat" action="discussions.php" method="POST">
-                        <div class="form-group col-lg-6">
-                            <input type="text" class="form-control" placeholder="Enter first name" id="username-input" name="name" required>
-                        </div>
-                        <div class="form-group col-lg-6">
-                            <input type="text" class="form-control" placeholder="Enter surname" id="surname-input" name="surname" required>
-                        </div>
-                        <div class="form-group col-lg-12">
-                            <textarea name="message" rows="5" class="form-control" placeholder="Enter Message" id="message-input" required></textarea>
-                        </div>
-                        <div class="form-group col-lg-12 d-grid">
-                            <button class="btn btn-brand" id="send-button" type="submit">Send Message</button>
-                        </div>
                         <?php
-                        $host = 'localhost';
-                        $db   = 'Discussion';
-                        $user = 'root';
-                        $pass = '';
+                        // Connect to the database
+                        $db = new PDO('mysql:host=localhost;dbname=Discussion;charset=utf8', 'root', '');
 
-                        // Create a new PDO instance
-                        $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
+                        // Check if message form is submitted
+                        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
+                            // Prepare and execute the SQL statement
+                            $stmt = $db->prepare("INSERT INTO Messages (name, surname, content) VALUES (?, ?, ?)");
+                            $stmt->execute([$_POST['name'], $_POST['surname'], $_POST['message']]);
+                        }
 
-                        // Prepare and execute the SQL statement
-                        $stmt = $pdo->prepare("SELECT name, surname, content FROM messages");
-                        $stmt->execute();
+                        // Check if reply form is submitted
+                        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply'], $_POST['message_id'])) {
+                            // Prepare and execute the SQL statement
+                            $stmt = $db->prepare("INSERT INTO Replies (message_id, name, surname, content) VALUES (?, ?, ?, ?)");
+                            $stmt->execute([$_POST['message_id'], $_POST['name'], $_POST['surname'], $_POST['reply']]);
+                        }
 
-                        // Fetch all of the remaining rows in the result set
-                        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        // Fetch all messages
+                        $stmt = $db->query("SELECT * FROM Messages");
+                        $messages = $stmt->fetchAll();
                         ?>
-
-                        <!-- Display messages -->
-                        <?php foreach ($messages as $message): ?>
-                            <div class="message">
-                                <h2 style="color: maroon;"><?php echo htmlspecialchars($message['name'] . ' ' . $message['surname']); ?></h2>
-                                <p style="color: black;"><?php echo htmlspecialchars($message['content']); ?></p>
-                            </div>
-                        <?php endforeach; ?>
-                    </form>
-                </div>    
+                            <form method="post" class="row g-3 p-lg-5 p-4 bg-white theme-shadow" action="discussions.php">
+                                <div class="form-group col-lg-6">
+                                    <input type="text" class="form-control" name="name" placeholder="Name" required>
+                                </div>
+                                <div class="form-group col-lg-6">
+                                    <input type="text" class="form-control" name="surname" placeholder="Surname" required>
+                                </div>
+                                <div class="form-group col-lg-12">
+                                <textarea name="message" rows="5" class="form-control" placeholder="Enter Message" required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-brand">Send</button>
+                                <?php foreach ($messages as $message): ?>
+                                    <div class="message">
+                                        <h2><?php echo htmlspecialchars($message['name']) . ' ' . htmlspecialchars($message['surname']); ?></h2>
+                                        <p><?php echo htmlspecialchars($message['content']); ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            </form>
             </div>   
         </div>
     </section>
@@ -368,7 +381,8 @@ if (isset($_POST['logout'])) {
                                 </optgroup>
                             </select>
                             <div class="form-group col-lg-12">
-                                <label for="myfile" class="form-control">Select a file: <input type="file" id="fileInput" name="myfile" class="form-control"></label>
+                                <h4>Select a file:</h4>
+                                <input type="file" id="fileInput" name="myfile" class="form-control"></label>
                                 <div class="form-group col-lg-12 d-grid">
                                     <button type="submit" class="btn btn-brand" style="width: 107.66px;">Upload</button>
                                 </div>
@@ -394,19 +408,20 @@ if (isset($_POST['logout'])) {
                                 <tr>
                                     <th style="width:80%">Resource Name</th>
                                     <th>Download</th>
+                                    <th>Delete</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($files as $file): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($file['name']); ?></td>
-                                    <td><a href="download.php?id=<?php echo $file['id']; ?>">Download</a></td>
-                                </tr>
-                                <?php endforeach; ?>
+                            <?php foreach ($files as $file): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($file['name']); ?></td>
+                                <td class="kay"><a href="download.php?id=<?php echo $file['id']; ?>">Download</a></td>
+                                <td class="kay"><a href="delete.php?id=<?php echo $file['id']; ?>">Delete</a></td> <!-- Add a delete button -->
+                            </tr>
+                            <?php endforeach; ?>
                             </tbody>
                         </table>
                     </form>
-                    
                 </div>
             </div>
         </div>
@@ -476,41 +491,29 @@ if (isset($_POST['logout'])) {
                 <div data-aos="fade-down" data-aos-delay="150" class="col-lg-5">
                     <h1>About CTU-Buddy</h1>
                     <div class="d-flex pt-4 mb-3">
-                        <div class="iconbox me-4">
-                            <i class="ri-mail-send-fill"></i>
-                        </div>
                         <div>
                             <h5>About CTU-Buddy</h5>
                             <p>CTU-Buddy is an educational platform designed to empower students at CTU Training Solutions. We are a team of passionate individuals dedicated to enhancing your learning experience by providing user-friendly tools and fostering a collaborative learning environment.</p>
                         </div>
                     </div>
                     <div class="d-flex mb-3">
-                        <div class="iconbox me-4">
-                            <i class="ri-user-5-fill"></i>
-                        </div>
                         <div>
                             <h5>Purpose</h5>
                             <p>CTU-Buddy exists to bridge the gap between students and resources, fostering a collaborative learning environment at CTU. We strive to empower students by providing a platform for connection, knowledge sharing, and academic success.We believe that every CTU student deserves the tools and support to thrive. CTU-Buddy is here to help you connect with classmates, share study materials, stay organized, and achieve your academic goals</p>
                         </div>
                     </div>
                     <div class="d-flex mb-3">
-                        <div class="iconbox me-4">
-                            <i class="ri-user-5-fill"></i>
-                        </div>
                         <div>
                             <h5>Mission</h5>
                             <p>CTU-Buddy is dedicated to revolutionizing the educational experience at CTU Training Solutions. Our mission is to provide students with a user-friendly platform that enhances learning, fosters collaboration, and facilitates effective communication between peers and educators. We aim to empower students to manage their schedules efficiently, engage in meaningful discussions, share resources seamlessly, and connect with their academic community effectively. With CTU-Buddy, we strive to contribute to the academic success and personal growth of every student at CTU</p>
                         </div>
                     </div>
                     <div class="d-flex mb-3">
-                        <div class="iconbox me-4">
-                            <i class="ri-user-5-fill"></i>
-                        </div>
                         <div>
                             <h5>Vision</h5>
                             <p>At CTU-Buddy, we envision a future where every student at CTU Training Solutions has access to a dynamic and innovative educational platform. Our vision is to create a supportive online environment that promotes lifelong learning, empowers students to excel academically, and fosters a sense of community and belonging. We strive to be a leader in educational technology, continuously evolving to meet the changing needs of our students and educators. With CTU-Buddy, we aim to inspire a passion for learning and enable students to reach their full potential in their academic journey</p>
                         </div>
-                    </div>-
+                    </div>
                 </div>
             </div>
         </div>
@@ -551,10 +554,12 @@ if (isset($_POST['logout'])) {
                         <input type="hidden" name="_cc" value="kyle11jan@gmail.com, mahlakanye18@gmail.com">
                     </form>
                 </div>
-                <div class="col-lg-6">
-                    <div class="iframe-container col-lg-6" style="background: transparent;">
-                                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d114617.52503203206!2d27.794205508845863!3d-26.13813967284999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1e959f7b7787c027%3A0xd1450a9cd56b62ed!2sCTU%20Training%20Solutions%20Roodepoort!5e0!3m2!1sen!2sza!4v1712920007718!5m2!1sen!2sza"  style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" class="ctu"></iframe>
-                </div>
+                <div class="col-lg-12">
+                    <div class="iframe-container col-lg-6" style="background: transparent; margin-left: 0;">
+                        <h2 class="mb-0 text-white" style="text-align: center;">Location</h2>
+                        <div class="line"></div>
+                            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d114617.52503203206!2d27.794205508845863!3d-26.13813967284999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1e959f7b7787c027%3A0xd1450a9cd56b62ed!2sCTU%20Training%20Solutions%20Roodepoort!5e0!3m2!1sen!2sza!4v1712920007718!5m2!1sen!2sza"  style="border:0; filter: grayscale(100%);" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" class="ctu"></iframe>
+                    </div>
                 </div>
             </div>
         </div>
@@ -564,8 +569,8 @@ if (isset($_POST['logout'])) {
     <footer class="bg-dark">
         <div class="footer-top">
             <div class="container">
-                <div class="row gy-5">
-                    <div class="col-lg-4 col-sm-6">
+                <div class="row gy-2">
+                    <div class="col-lg-3 col-sm-6">
                         <h5 class="mb-0 text-white">Navigation</h5>
                         <div class="line"></div>
                             <ul>
@@ -587,12 +592,9 @@ if (isset($_POST['logout'])) {
                                 <li class="nav-item">
                                     <a href="#contact">Contact</a>
                                 </li>
-                                <li class="nav-item">
-                                    <a href="#team">Team</a>
-                                </li>
                             </ul>
                     </div>
-                    <div class="col-lg-4 col-sm-6">
+                    <div class="col-lg-3 col-sm-6">
                         <h5 class="mb-0 text-white">About Us</h5>
                         <div class="line"></div>
                         <ul>
@@ -610,7 +612,7 @@ if (isset($_POST['logout'])) {
                                 </li>
                             </ul>
                     </div>
-                    <div class="col-lg-4 col-sm-6">
+                    <div class="col-lg-3 col-sm-6">
                         <h5 class="mb-0 text-white">CONTACT</h5>
                         <div class="line"></div>
                         <ul>
@@ -620,6 +622,38 @@ if (isset($_POST['logout'])) {
                             <li><a href="tel:+27 731155508" target="_blank">073 115 5508</a></li>
                             <li><a href="https://ctutraining.ac.za/" target="_blank">ctu.com</a></li>
                         </ul>
+                    </div>
+                    <div class="col-lg-3 col-sm-6">
+                        <h5 class="mb-0 text-white">Subscribe to Newsletter</h5>
+                        <div class="line"></div>
+                        <?php
+                        // Connect to the database
+                        $db = new PDO('mysql:host=localhost;dbname=Subscription;charset=utf8', 'root', '');
+
+                        // Check if form is submitted
+                        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
+                            // Prepare and execute the SQL statement
+                            $stmt = $db->prepare("INSERT INTO Subscription (email) VALUES (?)");
+                            $stmt->execute([$_POST['email']]);
+
+                            // Send a thank you email
+                            $to = $_POST['email'];
+                            $subject = "Thank you for subscribing!";
+                            $message = "Thank you for subscribing to our newsletter. We will keep you updated with our latest news.";
+                            $headers = "From: CTU-Buddy";
+
+                            mail($to, $subject, $message, $headers);
+                        }
+                        ?>
+
+                        <form action="home.php" method="post" class="form-inline" id="hell">
+                            <div class="form-group">
+                                <input type="email" class="form-control" name="email" placeholder="Your Email" required>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-brand" style="background-color: maroon; color:white; border:0;">Subscribe</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
